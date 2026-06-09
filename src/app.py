@@ -8,6 +8,9 @@ for extracurricular activities at Mergington High School.
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, EmailStr, Field
+from typing import List
+from datetime import date
 import os
 from pathlib import Path
 
@@ -78,6 +81,29 @@ activities = {
 }
 
 
+class Task(BaseModel):
+    title: str
+    description: str
+    points: int = Field(..., ge=1, le=100)
+    difficulty: int = Field(..., ge=1, le=5)
+    date: date
+    author_email: EmailStr
+    streams: List[str] = []
+
+
+tasks = {
+    "Website Redesign": {
+        "title": "Website Redesign",
+        "description": "Update the club website with a new homepage and member spotlight.",
+        "points": 8,
+        "difficulty": 3,
+        "date": date.today().isoformat(),
+        "author_email": "admin@mergington.edu",
+        "streams": ["web", "design"]
+    }
+}
+
+
 @app.get("/")
 def root():
     return RedirectResponse(url="/static/index.html")
@@ -86,6 +112,20 @@ def root():
 @app.get("/activities")
 def get_activities():
     return activities
+
+
+@app.get("/tasks")
+def get_tasks():
+    return list(tasks.values())
+
+
+@app.post("/tasks")
+def create_task(task: Task):
+    if task.title in tasks:
+        raise HTTPException(status_code=400, detail="Task already exists")
+
+    tasks[task.title] = task.dict()
+    return task
 
 
 @app.post("/activities/{activity_name}/signup")
